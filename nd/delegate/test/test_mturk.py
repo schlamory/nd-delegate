@@ -3,7 +3,8 @@ import unittest
 
 import boto.mturk.connection
 from datetime import datetime
-import mturk
+
+from .. import mturk
 from mturk_factory import (
                             RequestFactory,
                             BotoHITFactory, HITFactory,

@@ -1,6 +1,6 @@
 import factory
 import datetime
-import mturk
+from .. import mturk
 import boto.mturk.connection
 
 class RequestFactory(factory.Factory):
