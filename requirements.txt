@@ -1,0 +1,8 @@
+pytest
+boto>=2.31
+PyYaml>=3.11
+pypdf
+reportlab
+pytest-xdist
+pytest-cov
+factory-boy
