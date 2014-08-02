@@ -5,12 +5,16 @@ import unittest
 from .. import transcribe
 from ..transcribe import TranscriptionTask
 
-from mturk_factory import (
-                            RequestFactory,
-                            BotoHITFactory, HITFactory,
-                            BotoAssignmentFactory, AssignmentFactory,
-                            WorkerFactory
-                          )
+from factories.mturk import (
+  RequestFactory,
+  BotoHITFactory, HITFactory,
+  BotoAssignmentFactory, AssignmentFactory,
+  WorkerFactory
+  )
+
+from factories.transcribe import (
+  TranscriptionTaskFactory
+  )
 
 class TestTask(unittest.TestCase):
 
@@ -21,16 +25,5 @@ class TestTask(unittest.TestCase):
       path = "foo/bar/baz.pdf"
       task = TranscriptionTask.create(path)
       assert task.name == "baz"
-      assert [page.pdf_page for page in task.pages] == ["pdf1", "pdf3", "pdf3"]
+      assert [subtask.pdf_page for subtask in task.subtasks] == ["pdf1", "pdf3", "pdf3"]
 
-  def test_load(self):
-    pass
-
-  def test_save(self):
-    pass
-
-  def test_submit(self):
-    pass
-
-  def test_review(self):
-    pass

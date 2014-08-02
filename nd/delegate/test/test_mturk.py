@@ -5,7 +5,7 @@ import boto.mturk.connection
 from datetime import datetime
 
 from .. import mturk
-from mturk_factory import (
+from factories.mturk import (
                             RequestFactory,
                             BotoHITFactory, HITFactory,
                             BotoAssignmentFactory, AssignmentFactory,
