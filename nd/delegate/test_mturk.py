@@ -1,5 +1,4 @@
-from mock import MagicMock, Mock, patch
-import pytest
+from mock import MagicMock, patch
 import unittest
 
 import boto.mturk.connection

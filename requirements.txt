@@ -1,6 +1,6 @@
 pytest
 boto>=2.31
-PyYaml>=3.11
+pyaml
 pypdf
 reportlab
 pytest-xdist
