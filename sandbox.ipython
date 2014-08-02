@@ -1,0 +1,7 @@
+%load_ext autoreload
+%autoreload 2
+
+import yaml
+aws_credentials = yaml.load(open("secret/aws_credentials.yaml", "r"))
+pdf_path = "/Users/amoryschlender/Desktop/2014_07_21_16_39_45.pdf"
+

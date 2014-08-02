@@ -1,4 +1,5 @@
 import pyaml
+import pdf
 from collections import OrderedDict
 
 class TranscriptionTask(object):
