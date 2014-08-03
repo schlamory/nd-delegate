@@ -17,12 +17,19 @@ class AbstractTask(object):
     if values is None:
       self._subtasks = None
     else:
-      self._subtasks = [self.subtask_class(**v) if isinstance(v, dict) else v for v in values]
+      self._subtasks = [self.make_subtask(v) for v in values]
+
+  def make_subtask(self, value):
+    if isinstance(value, dict):
+      value = self.subtask_class(parent = self, **value)
+    value.parent = self
+    return value
 
   @property
   def subtask_class(self):
     return self.__class__
 
+  @property
   def serializable_attributes(self):
     return ["name", "subtasks"]
 
@@ -30,7 +37,7 @@ class AbstractTask(object):
   def serializable_dict(self):
     serialize = lambda ob: ob.serializable_dict if hasattr(ob, "serializable_dict") else ob
     d = OrderedDict()
-    for k in self.serializable_attributes():
+    for k in self.serializable_attributes:
       v = getattr(self, k)
       if hasattr(v, '__iter__'):
         v = [serialize(vv) for vv in v]
