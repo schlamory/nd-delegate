@@ -144,7 +144,7 @@ class TranscribePageAttempt(tree.Node):
           title = "Transcribe hand-written note (<250 words)",
           layout_id = "3D6J5AH4A4SR81YRLC1BJVMCZB4C3P",
           description = "Transcribe hand-written medical chart note (<250 words)",
-          keywords = "write, transcription, english, medical, handwriting",
+          keywords = "write, transcribe, english, medical, handwriting",
           reward = 0.35,
           lifetime = timedelta(days=7),
           duration = timedelta(hours=1),
@@ -152,7 +152,6 @@ class TranscribePageAttempt(tree.Node):
         )
     request.layout_params["file_url"] = self.parent.page_url
     return request
-
 
   def submit(self):
     request = self.create_mturk_request()
@@ -177,4 +176,4 @@ class TranscribePageAttempt(tree.Node):
 
   @classmethod
   def from_dict(cls, d):
-    return cls(hid_id=d["hit_id"])
+    return cls(hit_id=d["hit_id"])
