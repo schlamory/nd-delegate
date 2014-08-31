@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
-import yaml, pyaml, os, random, string
+import yaml, pyaml, os, random, string, re
 from collections import OrderedDict
-import tree
 
 import pdf, tree, mturk
 from mturk import HIT
@@ -9,8 +8,7 @@ from mturk import HIT
 from boto.s3.connection import S3Connection
 
 # Status definitions
-SUCCESS = "SUCCESS"
-FAILURE = "FAILURE"
+FINISHED = "FINISHED"
 PENDING = "PENDING"
 bucket = None
 
@@ -34,7 +32,7 @@ class TranscriptionTask(tree.Node):
 
   @classmethod
   def create(cls, pdf_path):
-    name = os.path.split(pdf_path)[1].replace(".pdf", "")
+    name = "transcribe_" + os.path.split(pdf_path)[1].replace(".pdf", "")
     task = cls(name = name)
     pdf_pages = pdf.load(pdf_path).get_pages()
     subtasks = [TranscribePageTask(pdf_page = page, page_number = i+1) for
@@ -47,11 +45,15 @@ class TranscriptionTask(tree.Node):
       child.submit()
 
   def review(self):
-    pass
+    for child in self.children:
+      child.review()
 
   @property
   def status(self):
-    return PENDING
+    if any([child.status == PENDING for child in self.children]):
+      return PENDING
+    else:
+      return FINISHED
 
   def to_dict(self):
     d = OrderedDict()
@@ -62,17 +64,36 @@ class TranscriptionTask(tree.Node):
 
   @classmethod
   def from_dict(cls, d):
-    children = [TranscribePageTask(dd) for dd in d["page_tasks"]]
+    children = [TranscribePageTask.from_dict(dd) for dd in d["page_tasks"]]
     return cls(children=children, name=d["name"])
+
+  def save(self, file_path):
+    f = open(file_path, "w")
+    f.write(pyaml.dump(self.to_dict()))
+    f.close()
+
+  @classmethod
+  def load(cls, file_path):
+    return cls.from_dict(yaml.load(open(file_path)))
+
+  def get_charts(self):
+    charts = []
+    for child in self.children:
+      attempt = child.get_latest_attempt()
+      if attempt.name:
+        charts.append(Chart(attempt))
+      charts[-1].add_attempt(attempt)
+    return charts
 
 class TranscribePageTask(tree.Node):
 
   def __init__(self, pdf_page=None, page_number=None, validation_code=None,
-                children = [], parent = None):
+                children = [], parent = None, page_url=None):
     tree.Node.__init__(self, children = children, parent = parent)
     self.pdf_page = pdf_page
     self.page_number = page_number
     self._validation_code = validation_code
+    self._page_url = page_url
 
   @property
   def s3_key_name(self):
@@ -80,8 +101,10 @@ class TranscribePageTask(tree.Node):
 
   @property
   def page_url(self):
-    return ("https://s3-" + bucket.get_location() + ".amazonaws.com/" +
-                             bucket.name + "/" + self.s3_key_name)
+    if self._page_url is None:
+      self._page_url = "https://s3-" + bucket.get_location() + ".amazonaws.com/"
+      self._page_url += bucket.name + "/" + self.s3_key_name
+    return self._page_url
 
   @property
   def validation_code(self):
@@ -102,15 +125,18 @@ class TranscribePageTask(tree.Node):
     attempt.submit()
 
   def review(self):
-    # Review attempts
-    # If one of the attempts is good, mark success
-    # If none of the attempts is good, create another subtask and submit it
-    pass
+    for child in self.children:
+      child.review()
+
+  def get_latest_attempt(self):
+    return self.children[-1]
 
   @property
   def status(self):
-    return PENDING
-
+    if any([child.status == "Approved" for child in self.children]):
+      return FINISHED
+    else:
+      return PENDING
 
   def to_dict(self):
     d = OrderedDict()
@@ -123,8 +149,8 @@ class TranscribePageTask(tree.Node):
 
   @classmethod
   def from_dict(cls, d):
-    children = [TranscribePageAttempt(dd) for dd in d["attempts"]]
-    return cls(children=children, page_number = d["page_number"],
+    children = [TranscribePageAttempt.from_dict(dd) for dd in d["attempts"]]
+    return cls(children=children, page_number = d["page_number"], page_url = d["page_url"],
                 validation_code=d["validation_code"])
 
 class TranscribePageAttempt(tree.Node):
@@ -157,14 +183,22 @@ class TranscribePageAttempt(tree.Node):
     request = self.create_mturk_request()
     self.hit = request.submit()
 
+  @property
+  def assignment(self):
+    if len(self.hit.assignments) > 0:
+      return self.hit.assignments[-1]
+
   def review(self):
-    if self.hit.status == "Reviewable":
-      self.hit.assignments[0].approve()
+    if self.assignment and self.assignment != "Approved":
+      self.assignment.approve()
       self.hit.refresh()
 
   @property
   def status(self):
-    return self.hit.status
+    if len(self.hit.assignments):
+      return self.hit.assignments[0].status
+    else:
+      return self.hit.status
 
   def to_dict(self):
     d = OrderedDict()
@@ -175,3 +209,52 @@ class TranscribePageAttempt(tree.Node):
   @classmethod
   def from_dict(cls, d):
     return cls(hit_id=d["hit_id"])
+
+  @property
+  def name(self):
+    name = self.assignment.answers_dict["name"].upper().strip()
+    if name == "NONAME" or name == "LAURA FIGOSKI":
+      return None
+    else:
+      return re.sub("[^A-Z]", "_", name)
+
+  @property
+  def date(self):
+    date = self.assignment.answers_dict["date"].upper().strip()
+    return None if date == "NODATE" else re.sub("[^\w]","_",date).strip()
+
+  @property
+  def validation_code(self):
+    return self.answers_dict["validation_code"].upper().strip()
+
+  @property
+  def note(self):
+    note = self.assignment.answers_dict["note"]
+    note = re.sub(r"\n\s*\-[\s\-]*","\n- ", "\n" +  note)  # Normalize leading dashes
+    note = note.replace("\r\n","\n")
+    return note
+
+  @property
+  def validation_code(self):
+    return self.assignment.answers_dict["validation_code"]
+
+class Chart(object):
+
+  def __init__(self, assignment):
+    self.name = assignment.name
+    self.date = assignment.date
+    self.note = ""
+
+  @property
+  def file_name(self):
+    return "{0}_{1}.md".format( self.name, self.date)
+
+  def add_attempt(self, attempt):
+    self.note += "<!-- \n{0}\nHIT ID:{1}\n -->".format(attempt.parent.page_url, attempt.hit.id)
+    self.note += attempt.note + "\n\n "
+
+  def write(self, output_dir):
+    path = os.path.join(output_dir, self.file_name)
+    f = open(path, "w")
+    f.write(self.note.encode('ascii','ignore'))
+    f.close()

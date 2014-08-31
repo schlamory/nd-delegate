@@ -190,7 +190,7 @@ class Assignment(object):
 
   @property
   def answers_dict(self):
-    return dict([(a["qid"], a["fields"]) for a in self._boto_assignment.answers[0]])
+    return dict([(a.qid, a.fields[0]) for a in self._boto_assignment.answers[0]])
 
 class Worker(object):
 

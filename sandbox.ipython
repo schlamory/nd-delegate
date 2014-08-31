@@ -1,6 +1,6 @@
 %load_ext autoreload
 %autoreload 2
-import yaml
+import yaml, pyaml
 
 from nd.delegate import transcribe, pdf
 
@@ -17,8 +17,12 @@ def clear_hits():
       hit.destroy()
 
 pdf_path = "/Users/amoryschlender/Desktop/wormhole/2014_07_21_16_39_45.pdf"
+task_path = "tmp/foo.yml"
 
-task = transcribe.TranscriptionTask.create(pdf_path)
+# task = transcribe.TranscriptionTask.create(pdf_path)
+# clear_hits()
+# task.submit()
+#
+# task.save(task_path)
 
-task.submit()
-
+task = transcribe.TranscriptionTask.load(task_path)

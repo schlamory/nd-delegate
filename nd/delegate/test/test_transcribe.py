@@ -32,7 +32,7 @@ class TestTranscriptionTask(unittest.TestCase):
     with patch.object(transcribe.pdf, 'load', return_value=mockPdf):
       path = "foo/bar/baz.pdf"
       task = TranscriptionTask.create(path)
-      assert task.name == "baz"
+      assert task.name == "transcribe_baz"
       subtasks = task.children
       assert [subtask.pdf_page for subtask in task.children] == ["pdf1", "pdf3", "pdf3"]
       assert [subtask.page_number for subtask in task.children] == [1, 2, 3]

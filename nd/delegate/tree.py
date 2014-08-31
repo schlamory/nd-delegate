@@ -1,7 +1,7 @@
 class Node(object):
 
   def __init__(self, parent = None, children = []):
-    self._children = children
+    self.children = children
     self.parent = parent
 
   @property
