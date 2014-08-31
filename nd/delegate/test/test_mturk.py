@@ -180,6 +180,12 @@ class AssignmentTests(unittest.TestCase):
       reason = "the reason"
     )
 
+  def test_answers_dict(self):
+    assignment = AssignmentFactory()
+    answers = [[{"qid": q + "_question", "fields": q + "_answer"} for q in ["foo", "bar"]]]
+    assignment._boto_assignment.answers = answers
+    assert assignment.answers_dict == {"foo_question":"foo_answer", "bar_question":"bar_answer"}
+
 class WorkerTests(unittest.TestCase):
 
   def test_id(self):

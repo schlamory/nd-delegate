@@ -188,6 +188,10 @@ class Assignment(object):
   def submit_time(self):
     return datetime.strptime(self._boto_assignment.SubmitTime, TURK_DATE_FORMAT)
 
+  @property
+  def answers_dict(self):
+    return dict([(a["qid"], a["fields"]) for a in self._boto_assignment.answers[0]])
+
 class Worker(object):
 
   def __init__(self, id):
