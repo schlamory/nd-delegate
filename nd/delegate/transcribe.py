@@ -158,11 +158,9 @@ class TranscribePageAttempt(tree.Node):
     self.hit = request.submit()
 
   def review(self):
-    # See if HIT has an assignment.
-    # If it does, review it
-    # If successful, approve the HIT and mark success
-    # If failure, reject the HIT and mark failure
-    pass
+    if self.hit.status == "Reviewable":
+      self.hit.assignments[0].approve()
+      self.hit.refresh()
 
   @property
   def status(self):

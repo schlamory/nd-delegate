@@ -161,7 +161,7 @@ class AssignmentTests(unittest.TestCase):
 
   def test_refresh(self):
     new_boto_assignment = BotoAssignmentFactory(AssignmentStatus="NEW STATUS")
-    get_assignment = mturk.connection.get_assignment = MagicMock(return_value=new_boto_assignment)
+    get_assignment = mturk.connection.get_assignment = MagicMock(return_value=[new_boto_assignment])
     assignment = AssignmentFactory(boto_assignment__AssignmentId="theID")
     assignment.refresh()
     get_assignment.assert_called_with("theID")

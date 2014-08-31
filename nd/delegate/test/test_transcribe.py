@@ -133,3 +133,11 @@ class TestTranscribePageAttempt(unittest.TestCase):
     d = task.to_dict()
     deserialized = TranscribePageAttempt.from_dict(d)
     assert deserialized.hit.id == task.hit.id
+
+  def test_review(self):
+    task = TranscribePageAttemptFactory()
+    task.hit = HITFactory(id = task.hit.id, boto_hit = BotoHITFactory(HITStatus="Reviewable"))
+    task.hit._assignments = [AssignmentFactory()]
+    with patch.object(transcribe.mturk.Assignment, "approve"):
+      task.review()
+      task.hit.assignments[0].approve.assert_called_with()

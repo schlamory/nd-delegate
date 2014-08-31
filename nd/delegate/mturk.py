@@ -147,7 +147,7 @@ class Assignment(object):
     self._boto_assignment = boto_assignment
 
   def refresh(self):
-    self._boto_assignment = connection.get_assignment(self.id)
+    self._boto_assignment = connection.get_assignment(self.id)[0]
 
   def approve(self, message=None):
     if self.status == "Rejected":
