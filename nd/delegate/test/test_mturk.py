@@ -73,7 +73,7 @@ class HITTests(unittest.TestCase):
 
   def test_lazy_boto_hit(self):
     boto_hit = BotoHITFactory(HITId="remote_id")
-    mturk.connection.get_hit = MagicMock(return_value=boto_hit)
+    mturk.connection.get_hit = MagicMock(return_value=[boto_hit])
     hit = mturk.HIT(id="remote_id")
     assert hit.boto_hit == boto_hit
     mturk.connection.get_hit.assert_called_with(hit.id)
@@ -89,7 +89,7 @@ class HITTests(unittest.TestCase):
   # Actions
   def test_refresh(self):
     boto_hit = BotoHITFactory(HITStatus="UPDATED")
-    mturk.connection.get_hit = MagicMock(return_value=boto_hit)
+    mturk.connection.get_hit = MagicMock(return_value=[boto_hit])
     hit = HITFactory()
     hit.refresh()
     assert hit.status == "UPDATED"

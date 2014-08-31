@@ -47,5 +47,5 @@ def add_annotation_to_page(pdf_page, annotation, fontsize=24, margin=20):
   return page_background
 
 PageObject.save = save_page
-PageObject.add_annotation = add_annotation_to_page
+PageObject.get_annotated_copy = add_annotation_to_page
 PageObject.save_to_s3 = save_page_to_s3_key

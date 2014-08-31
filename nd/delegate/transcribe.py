@@ -92,7 +92,7 @@ class TranscribePageTask(tree.Node):
   def post_page(self):
     key = bucket.new_key(self.s3_key_name)
     key.content_disposition = "inline"
-    page = self.pdf_page.add_annotation(self.validation_code)
+    page = self.pdf_page.get_annotated_copy(self.validation_code)
     page.save_to_s3(key)
 
   def submit(self):

@@ -1,7 +1,24 @@
 %load_ext autoreload
 %autoreload 2
-
 import yaml
-aws_credentials = yaml.load(open("secret/aws_credentials.yaml", "r"))
-pdf_path = "/Users/amoryschlender/Desktop/2014_07_21_16_39_45.pdf"
+
+from nd.delegate import transcribe, pdf
+
+connection_config = yaml.load(open("secret/aws_credentials.yaml"))
+connection_config["bucket_name"] = "laura-charts"
+connection_config["sandbox"] = True
+
+transcribe.connect(**connection_config)
+
+def clear_hits():
+  hits = [transcribe.HIT(id=h.HITId) for h in transcribe.mturk.connection.get_all_hits()]
+  for hit in hits:
+      hit.expire()
+      hit.destroy()
+
+pdf_path = "/Users/amoryschlender/Desktop/wormhole/2014_07_21_16_39_45.pdf"
+
+task = transcribe.TranscriptionTask.create(pdf_path)
+
+task.submit()
 

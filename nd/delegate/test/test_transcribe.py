@@ -64,15 +64,16 @@ class TestTranscribePageTask(unittest.TestCase):
 
   def test_post_page(self):
     mock_page = MagicMock()
+    mock_annotated_page = MagicMock()
+    mock_page.get_annotated_copy = MagicMock(return_value=mock_annotated_page)
     task = TranscribePageTaskFactory(pdf_page = mock_page)
     with patch.object(transcribe, "bucket") as mock_bucket:
       mock_key = MagicMock()
       mock_bucket.new_key = MagicMock(return_value = mock_key)
       task.post_page()
       mock_bucket.new_key.assert_called_with(task.s3_key_name)
-      mock_page.save_to_s3.assert_called_with(mock_key)
-
-
+      mock_page.get_annotated_copy.assert_called_with(task.validation_code)
+      mock_annotated_page.save_to_s3.assert_called_with(mock_key)
 
 class TranscribePageAttempt(unittest.TestCase):
 
@@ -80,3 +81,12 @@ class TranscribePageAttempt(unittest.TestCase):
     task = TranscribePageAttemptFactory()
     assert task.hit is not None
     assert task.parent is not None
+
+  def test_submit(self):
+    task = TranscribePageAttemptFactory()
+    mock_request = MagicMock()
+    with patch.object(transcribe.TranscribePageAttempt, "create_mturk_request",
+                                                         return_value=mock_request):
+      task.submit()
+      task.create_mturk_request.assert_called()
+      mock_request.submit.assert_called()
