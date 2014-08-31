@@ -9,10 +9,10 @@ class TranscriptionTaskFactory(factory.Factory):
   name = factory.Sequence(lambda n: "task_%d" % n)
 
   @factory.post_generation
-  def subtasks(self, create, extracted, **kwargs):
+  def children(self, create, extracted, **kwargs):
     if not extracted:
-      self.subtasks = [TranscribePageTaskFactory(parent=self, page_number=i) for i in range(5)]
-
+      self.children = [TranscribePageTaskFactory(page_number=i, pdf_page="pdf%i" % i)
+                                                                              for i in range(5)]
 
 class TranscribePageTaskFactory(factory.Factory):
   class Meta:
@@ -25,13 +25,12 @@ class TranscribePageTaskFactory(factory.Factory):
   @factory.post_generation
   def parent(self, create, extracted, **kwargs):
     if self.parent is None:
-      self.parent = TranscriptionTaskFactory(subtasks = [self])
+      self.parent = TranscriptionTaskFactory(children = [self])
 
   @factory.post_generation
-  def subtasks(self, create, extracted, **kwargs):
+  def children(self, create, extracted, **kwargs):
     if not extracted:
-      pdf_url = "bucket/task_name/{0}.pdf".format(self.page_number)
-      self.subtasks = [TranscribePageAttemptFactory(parent=self, pdf_url=pdf_url)]
+      self.children = [TranscribePageAttemptFactory(parent=self)]
 
 
 class TranscribePageAttemptFactory(factory.Factory):
@@ -39,10 +38,9 @@ class TranscribePageAttemptFactory(factory.Factory):
     model = transcribe.TranscribePageAttempt
 
   hit_id = factory.Sequence(lambda n: "hit_%n")
-  pdf_url = "http://www.foo.com"
   parent = None
 
   @factory.post_generation
   def parent(self, create, extracted, **kwargs):
     if not self.parent:
-      self.parent = TranscribePageTaskFactory(subtasks = [self])
+      self.parent = TranscribePageTaskFactory(children = [self])

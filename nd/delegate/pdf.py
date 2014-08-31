@@ -1,6 +1,7 @@
 from pyPdf.pdf import PdfFileWriter, PdfFileReader, PageObject
-import StringIO
+import StringIO, os, uuid
 from reportlab.pdfgen import canvas
+
 
 def load(file_path):
   return PdfFileReader(open(file_path, "r"))
@@ -18,6 +19,12 @@ def save_page(page, file_path):
   f = open(file_path, "wb")
   output.write(f)
   f.close()
+
+def save_page_to_s3_key(page, s3_key):
+  name = str(uuid.uuid1()) + ".pdf"
+  page.save(name)
+  s3_key.set_contents_from_filename(name)
+  os.unlink(name)
 
 def add_annotation_to_page(pdf_page, annotation, fontsize=24, margin=20):
   # Adds an annotation at bottom-left of the page
@@ -41,3 +48,4 @@ def add_annotation_to_page(pdf_page, annotation, fontsize=24, margin=20):
 
 PageObject.save = save_page
 PageObject.add_annotation = add_annotation_to_page
+PageObject.save_to_s3 = save_page_to_s3_key

@@ -34,7 +34,7 @@ class Request(object):
     self.qualifications = qualifications
 
   def submit(self):
-    connection.create_hit(
+    boto_hit = connection.create_hit(
       hit_layout = self.layout_id,
       lifetime = self.lifetime,
       max_assignments = self.max_assignments,
@@ -47,12 +47,14 @@ class Request(object):
       annotation = self.annotation,
       qualifications = self.qualifications,
       layout_params = self.get_boto_layout_params()
-    )
+    )[0]
+    return HIT(boto_hit=boto_hit)
 
   def get_boto_layout_params(self):
     params = LayoutParameters()
     for k, v in self.layout_params.items():
       params.add(LayoutParameter(k, v))
+    return params
 
 class HIT(object):
 
@@ -67,7 +69,7 @@ class HIT(object):
     self._assignments = None
 
   def refresh(self):
-    self._boto_hit = connection.get_hit(self.id)
+    self._boto_hit = connection.get_hit(self.id)[0]
 
   def expire(self):
     connection.expire_hit(self.id)

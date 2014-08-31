@@ -23,17 +23,26 @@ class TestTranscriptionTask(unittest.TestCase):
   def test_factory(self):
     task = TranscriptionTaskFactory()
     assert task.name
-    assert len(task.subtasks)
+    assert len(task.children) == 5
 
   def test_create(self):
     mockPdf = MagicMock()
     mockPdf.get_pages = MagicMock(return_value = ["pdf1", "pdf3", "pdf3"])
-    with patch.object(transcribe.pdf, 'load', return_value=mockPdf) as mock_load:
+    mockPageTask = MagicMock()
+    with patch.object(transcribe.pdf, 'load', return_value=mockPdf):
       path = "foo/bar/baz.pdf"
       task = TranscriptionTask.create(path)
       assert task.name == "baz"
-      assert [subtask.pdf_page for subtask in task.subtasks] == ["pdf1", "pdf3", "pdf3"]
-      assert [subtask.parent for subtask in task.subtasks] == [task, task, task]
+      subtasks = task.children
+      assert [subtask.pdf_page for subtask in task.children] == ["pdf1", "pdf3", "pdf3"]
+      assert [subtask.page_number for subtask in task.children] == [1, 2, 3]
+
+  def test_submit(self):
+    task = TranscriptionTaskFactory()
+    with patch.object(transcribe.TranscribePageTask, "submit"):
+      task.submit()
+      for child in task.children:
+        child.submit.assert_called_with()
 
 class TestTranscribePageTask(unittest.TestCase):
 
@@ -41,12 +50,33 @@ class TestTranscribePageTask(unittest.TestCase):
     task = TranscribePageTaskFactory()
     assert task.page_number is not None
     assert task.parent.name
-    assert len(task.subtasks) == 1
+    assert len(task.children) == 1
+
+  def test_submit(self):
+    task = TranscribePageTaskFactory(children = [])
+    task.children = []
+    with patch.object(transcribe.TranscribePageTask, "post_page"):
+      with patch.object(transcribe.TranscribePageAttempt, "submit"):
+        task.submit()
+        task.post_page.assert_called()
+        assert len(task.children) == 1
+        task.children[0].submit.assert_called_with()
+
+  def test_post_page(self):
+    mock_page = MagicMock()
+    task = TranscribePageTaskFactory(pdf_page = mock_page)
+    with patch.object(transcribe, "bucket") as mock_bucket:
+      mock_key = MagicMock()
+      mock_bucket.new_key = MagicMock(return_value = mock_key)
+      task.post_page()
+      mock_bucket.new_key.assert_called_with(task.s3_key_name)
+      mock_page.save_to_s3.assert_called_with(mock_key)
+
+
 
 class TranscribePageAttempt(unittest.TestCase):
 
   def test_factory(self):
     task = TranscribePageAttemptFactory()
-    assert task.pdf_url is not None
     assert task.hit is not None
     assert task.parent is not None

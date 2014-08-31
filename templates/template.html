@@ -1,0 +1,65 @@
+<!-- Bootstrap v3.0.3 -->
+<link href="https://s3.amazonaws.com/mturk-public/bs30/css/bootstrap.min.css" rel="stylesheet" />
+<section class="container" id="TranscriptionFromAnImage" style="margin-bottom:15px; padding: 10px 10px; font-family: Verdana, Geneva, sans-serif; color:#333333; font-size:0.9em;">
+<div class="row col-xs-12 col-md-12"><!-- Instructions -->
+<div class="panel panel-primary">
+<div class="panel-heading"><strong>Instructions: Transcribe hand-written note</strong></div>
+
+<div class="panel-body">
+  <strong>DO</strong>:</li>
+<ul>
+	<li> Include line-breaks</li>
+  <li> Include '-' characters, especially when present at beginning of a line</li>
+	<li> Attempt to transcribe all words; if a word is hard to read, take your best guess. </li>
+</ul>
+<strong>DO NOT</strong>:</li>
+<ul>
+	<li> Do not correct spelling; abbreviations and shorthand are deliberate. </li>
+	<li> Do not transcribe crossed-out text; crossed-out text can be ignored. </li>
+</ul>
+<p><strong>WARNING</strong>: Browser scripts may interfere with this HIT, making it possible to submit accidentally. If you receive a rejection for this reason, please contact us for review. We'll do our best to resolve all conflicts.</p>
+</div>
+</div>
+<!-- End Instructions -->
+
+<div class="row">
+  <div class="col-sm-7">
+        <iframe height="860px" width="100%" src="${file_url}" type="application/pdf">
+        </iframe>
+  </div>
+
+  <div class="inputfields col-sm-5">
+
+    <div class="form-group">
+      <label>Date:</label>
+      <input class="form-control" name="date" required="required" type="text"
+      placeholder="write &#39;NODATE&#39; if empty" />
+    </div>
+
+
+    <div class="form-group">
+      <label>Name:</label>
+      <input class="form-control" name="name" required="required" type="text"
+             placeholder="write &#39;NONAME&#39; if empty"
+       />
+    </div>
+
+    <div class="form-group">
+      <label>Note:</label>
+      <textarea class="form-control" name="note" required="required" rows="30"
+      placeholder="write &#39;EMPTY&#39; if empty">
+      </textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Code:</label>
+      <input placeholder="copy/paste from bottom-left corner of document" class="form-control"
+             name="validation_code" required="required" type="text"/>
+    </div>
+  </div>
+</div>
+
+
+
+</section>
+

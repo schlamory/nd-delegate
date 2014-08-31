@@ -1,8 +1,9 @@
-import yaml, pyaml, os
+from datetime import datetime, timedelta
+import yaml, pyaml, os, random, string
 from collections import OrderedDict
-from task import AbstractTask
+import tree
 
-import pdf
+import pdf, tree, mturk
 from mturk import HIT
 
 from boto.s3.connection import S3Connection
@@ -11,6 +12,7 @@ from boto.s3.connection import S3Connection
 SUCCESS = "SUCCESS"
 FAILURE = "FAILURE"
 PENDING = "PENDING"
+bucket = None
 
 def connect(aws_access_key_id = None,
             aws_secret_access_key = None,
@@ -24,95 +26,137 @@ def connect(aws_access_key_id = None,
   global bucket
   bucket = S3Connection(aws_access_key_id, aws_secret_access_key).get_bucket(bucket_name)
 
-class TranscriptionTask(AbstractTask):
+class TranscriptionTask(tree.Node):
 
-  def __init__(self, name=None, subtasks = [], **kargs):
+  def __init__(self, name = None, children = None):
+    tree.Node.__init__(self, children = children)
     self.name = name
-    self.subtasks = subtasks
-
-  @property
-  def serializable_attributes(self):
-    return ["name", "subtasks", "status"]
-
-  @property
-  def subtask_class(self):
-    return TranscribePageTask
 
   @classmethod
   def create(cls, pdf_path):
     name = os.path.split(pdf_path)[1].replace(".pdf", "")
-    pages = pdf.load(pdf_path).get_pages()
-    subtask_configs = [{"page_number": i, "pdf_page": page} for (i, page) in enumerate(pages)]
-    task = cls(name = name, subtasks = subtask_configs)
+    task = cls(name = name)
+    pdf_pages = pdf.load(pdf_path).get_pages()
+    subtasks = [TranscribePageTask(pdf_page = page, page_number = i+1) for
+                                                                (i, page) in enumerate(pdf_pages)]
+    task.children = subtasks
     return task
 
   def submit(self):
-    # Submit all child tasks
-    AbstractTask.submit(self)
+    for child in self.children:
+      child.submit()
 
   def review(self):
-    # Review all child tasks
-    AbstractTask.review(self)
+    pass
 
+  @property
   def status(self):
     return PENDING
 
-class TranscribePageTask(AbstractTask):
+  def to_dict(self):
+    d = OrderedDict()
+    d["name"] = self.name
+    d["status"] = self.status
+    d["page_tasks"] = [task.to_dict() for task in self.children]
+    return d
 
-  def __init__(self, parent=None, pdf_page=None, page_number=None, subtasks = [], **kargs):
+  @classmethod
+  def from_dict(cls, d):
+    children = [TranscribePageTask(dd) for dd in d["page_tasks"]]
+    return cls(children=children, name=d["name"])
+
+class TranscribePageTask(tree.Node):
+
+  def __init__(self, pdf_page=None, page_number=None, validation_code=None,
+                children = [], parent = None):
+    tree.Node.__init__(self, children = children, parent = parent)
     self.pdf_page = pdf_page
     self.page_number = page_number
-    self.parent = parent
-    self.subtasks = subtasks
+    self._validation_code = validation_code
 
   @property
-  def serializable_attributes(self):
-    return ["page_number", "subtasks", "status"]
-
-  @property
-  def subtask_class(self):
-    return TranscribePageAttempt
-
-  @property
-  def s3_key(self):
+  def s3_key_name(self):
     return "{0}/{1}.pdf".format(self.parent.name, self.page_number)
 
   @property
+  def page_url(self):
+    return ("https://s3-" + bucket.get_location() + ".amazonaws.com/" +
+                             bucket.name + "/" + self.s3_key_name)
+
+  @property
+  def validation_code(self):
+    if self._validation_code is None:
+      self._validation_code = ''.join(random.choice(string.ascii_uppercase) for _ in range(5))
+    return self._validation_code
+
+  def post_page(self):
+    key = bucket.new_key(self.s3_key_name)
+    key.content_disposition = "inline"
+    page = self.pdf_page.add_annotation(self.validation_code)
+    page.save_to_s3(key)
+
   def submit(self):
-    # Post the PDF
-    # Create an attempt task
-    # Submit child tasks
-    AbstractTask.submit(self)
+    self.post_page()
+    attempt = TranscribePageAttempt(parent = self)
+    self.children = [attempt]
+    attempt.submit()
 
   def review(self):
     # Review attempts
-    AbstractTask.review(self)
     # If one of the attempts is good, mark success
     # If none of the attempts is good, create another subtask and submit it
+    pass
 
   @property
   def status(self):
     return PENDING
 
-class TranscribePageAttempt(AbstractTask):
 
-  def __init__(self, hit_id=None, pdf_url=None, parent=None, **kargs):
+  def to_dict(self):
+    d = OrderedDict()
+    d["page_number"] = self.page_number
+    d["page_url"] = self.page_url
+    d["status"] = self.status
+    d["validation_code"] = self.validation_code
+    d["attempts"] = [attempt.to_dict() for attempt in self.children]
+    return d
+
+  @classmethod
+  def from_dict(cls, d):
+    children = [TranscribePageAttempt(dd) for dd in d["attempts"]]
+    return cls(children=children, page_number = d["page_number"],
+                validation_code=d["validation_code"])
+
+class TranscribePageAttempt(tree.Node):
+
+  def __init__(self, hit_id=None, parent=None):
+    tree.Node.__init__(self, parent = parent)
     self.hit = HIT(id=hit_id) if hit_id is not None else None
-    self.pdf_url = pdf_url
     self.parent = parent
-
-  @property
-  def serializable_attributes(self):
-    return ["hit_id", "status"]
 
   @property
   def hit_id(self):
     if self.hit is not None:
       return self.hit.id
 
+  def create_mturk_request(self):
+    request = mturk.Request(
+          title = "Transcribe hand-written note (<250 words)",
+          layout_id = "3D6J5AH4A4SR81YRLC1BJVMCZB4C3P",
+          description = "Transcribe hand-written medical chart note (<250 words)",
+          keywords = "write, transcription, english, medical, handwriting",
+          reward = 0.35,
+          lifetime = timedelta(days=7),
+          duration = timedelta(hours=1),
+          approval_delay = timedelta(days=1)
+        )
+    request.layout_params["file_url"] = self.parent.page_url
+    return request
+
+
   def submit(self):
-    # Submit request if not HIT
-    pass
+    request = self.create_mturk_request()
+    self.hit = request.submit()
 
   def review(self):
     # See if HIT has an assignment.
@@ -123,4 +167,14 @@ class TranscribePageAttempt(AbstractTask):
 
   @property
   def status(self):
-    return PENDING
+    return self.hit.status
+
+  def to_dict(self):
+    d = OrderedDict()
+    d["hit_id"] = self.hit.id
+    d["status"] = self.status
+    return d
+
+  @classmethod
+  def from_dict(cls, d):
+    return cls(hid_id=d["hit_id"])
