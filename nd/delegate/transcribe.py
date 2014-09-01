@@ -128,6 +128,11 @@ class TranscribePageTask(tree.Node):
     self.children = [attempt]
     attempt.submit()
 
+  def resubmit(self):
+    attempt = TranscribePageAttempt(parent = self)
+    self.children.append(attempt)
+    attempt.submit()
+
   def review(self):
     for child in self.children:
       child.review()
@@ -137,7 +142,7 @@ class TranscribePageTask(tree.Node):
 
   @property
   def status(self):
-    if any([child.status == "Approved" for child in self.children]):
+    if self.children[-1].status == "Approved":
       return FINISHED
     else:
       return PENDING
@@ -195,8 +200,9 @@ class TranscribePageAttempt(tree.Node):
   def review(self):
     self.hit.refresh()
     if self.assignment and self.assignment.status != "Approved":
-      self.assignment.approve()
-      self.hit.refresh()
+      if self.assignment.answers_dict["validation_code"] == self.parent.validation_code:
+        self.assignment.approve()
+        self.hit.refresh()
 
   @property
   def status(self):
