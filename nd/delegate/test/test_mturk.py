@@ -91,8 +91,12 @@ class HITTests(unittest.TestCase):
     boto_hit = BotoHITFactory(HITStatus="UPDATED")
     mturk.connection.get_hit = MagicMock(return_value=[boto_hit])
     hit = HITFactory()
+    hit._boto_assignments = []
+    hit._assignments = []
     hit.refresh()
     assert hit.status == "UPDATED"
+    assert hit._assignments == None
+    assert hit._boto_assignments == None
     mturk.connection.get_hit.assert_called_once_with(hit.id)
 
   def test_expire(self):
@@ -179,12 +183,6 @@ class AssignmentTests(unittest.TestCase):
       bonus_price = "0.25USD",
       reason = "the reason"
     )
-
-  def test_answers_dict(self):
-    assignment = AssignmentFactory()
-    answers = [[{"qid": q + "_question", "fields": q + "_answer"} for q in ["foo", "bar"]]]
-    assignment._boto_assignment.answers = answers
-    assert assignment.answers_dict == {"foo_question":"foo_answer", "bar_question":"bar_answer"}
 
 class WorkerTests(unittest.TestCase):
 

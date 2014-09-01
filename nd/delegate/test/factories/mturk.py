@@ -80,7 +80,6 @@ class BotoAssignmentFactory(factory.Factory):
   HITId =  u'39O6Z4JLX2YG6EZ0SNNI3BQ6SK7XVE'
   SubmitTime =  u'2014-07-26T23:57:00Z'
   WorkerId =  u'A37AEUHK9BXWJT'
-  answers = [[{"qid": q + "_question", "fields": q + "answer"} for q in ["foo", "bar", "baz"]]]
 
 class AssignmentFactory(factory.Factory):
 

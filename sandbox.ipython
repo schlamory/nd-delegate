@@ -1,28 +1,27 @@
-%load_ext autoreload
-%autoreload 2
-import yaml, pyaml
+# %load_ext autoreload
+# %autoreload 2
+import yaml, pyaml, os, glob
 
 from nd.delegate import transcribe, pdf
 
 connection_config = yaml.load(open("secret/aws_credentials.yaml"))
 connection_config["bucket_name"] = "laura-charts"
-connection_config["sandbox"] = True
+connection_config["sandbox"] = False
 
 transcribe.connect(**connection_config)
 
-def clear_hits():
-  hits = [transcribe.HIT(id=h.HITId) for h in transcribe.mturk.connection.get_all_hits()]
-  for hit in hits:
-      hit.expire()
-      hit.destroy()
-
-pdf_path = "/Users/amoryschlender/Desktop/wormhole/2014_07_21_16_39_45.pdf"
-task_path = "tmp/foo.yml"
-
-# task = transcribe.TranscriptionTask.create(pdf_path)
-# clear_hits()
-# task.submit()
+# def clear_hits():
+#   hits = [transcribe.HIT(id=h.HITId) for h in transcribe.mturk.connection.get_all_hits()]
+#   for hit in hits:
+#       hit.expire()
+#       hit.destroy()
 #
-# task.save(task_path)
+pdf_paths = glob.glob('/Users/amoryschlender/Desktop/wormhole/*.pdf')
 
-task = transcribe.TranscriptionTask.load(task_path)
+pdf_path = pdf_paths[-1]
+pending_pdf_path = '/Users/amoryschlender/Desktop/wormhole/pending/' + pdf_path.split("/")[-1]
+os.rename(pdf_path, pending_pdf_path)
+
+task = transcribe.TranscriptionTask.create(pending_pdf_path)
+task.submit()
+task.save("/Users/amoryschlender/Desktop/wormhole/pending/" + task.name + ".yml")

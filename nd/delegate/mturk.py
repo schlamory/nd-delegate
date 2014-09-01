@@ -70,6 +70,8 @@ class HIT(object):
 
   def refresh(self):
     self._boto_hit = connection.get_hit(self.id)[0]
+    self._boto_assignments = None
+    self._assignments = None
 
   def expire(self):
     connection.expire_hit(self.id)

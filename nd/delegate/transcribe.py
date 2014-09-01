@@ -26,7 +26,7 @@ def connect(aws_access_key_id = None,
 
 class TranscriptionTask(tree.Node):
 
-  def __init__(self, name = None, children = None):
+  def __init__(self, name = None, children = []):
     tree.Node.__init__(self, children = children)
     self.name = name
 
@@ -88,8 +88,8 @@ class TranscriptionTask(tree.Node):
 class TranscribePageTask(tree.Node):
 
   def __init__(self, pdf_page=None, page_number=None, validation_code=None,
-                children = [], parent = None, page_url=None):
-    tree.Node.__init__(self, children = children, parent = parent)
+                page_url=None, parent = None, children = []):
+    tree.Node.__init__(self, parent = parent, children = children)
     self.pdf_page = pdf_page
     self.page_number = page_number
     self._validation_code = validation_code
@@ -168,7 +168,7 @@ class TranscribePageAttempt(tree.Node):
   def create_mturk_request(self):
     request = mturk.Request(
           title = "Transcribe hand-written note (<250 words)",
-          layout_id = "3D6J5AH4A4SR81YRLC1BJVMCZB4C3P",
+          layout_id = "32MA0R2ZOAKLP26O5I8BSSLFWVZDVX",
           description = "Transcribe hand-written medical chart note (<250 words)",
           keywords = "write, transcribe, english, medical, handwriting",
           reward = 0.35,
@@ -189,7 +189,8 @@ class TranscribePageAttempt(tree.Node):
       return self.hit.assignments[-1]
 
   def review(self):
-    if self.assignment and self.assignment != "Approved":
+    self.hit.refresh()
+    if self.assignment and self.assignment.status != "Approved":
       self.assignment.approve()
       self.hit.refresh()
 
@@ -247,10 +248,13 @@ class Chart(object):
 
   @property
   def file_name(self):
-    return "{0}_{1}.md".format( self.name, self.date)
+    return "{0}_{1}.md".format(self.date,  self.name)
 
   def add_attempt(self, attempt):
-    self.note += "<!-- \n{0}\nHIT ID:{1}\n -->".format(attempt.parent.page_url, attempt.hit.id)
+    self.note += "<!-- "
+    self.note += "\n    Page URL: " + attempt.parent.page_url
+    self.note += "\n    HIT ID: " + attempt.hit.id
+    self.note += "\n-->"
     self.note += attempt.note + "\n\n "
 
   def write(self, output_dir):
