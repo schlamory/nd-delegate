@@ -30,6 +30,10 @@ class TranscriptionTask(tree.Node):
     tree.Node.__init__(self, children = children)
     self.name = name
 
+  @property
+  def pdf_name(self):
+    return self.name.replace("transcribe_","") + ".pdf"
+
   @classmethod
   def create(cls, pdf_path):
     name = "transcribe_" + os.path.split(pdf_path)[1].replace(".pdf", "")
