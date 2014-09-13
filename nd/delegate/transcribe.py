@@ -227,7 +227,9 @@ class TranscribePageAttempt(tree.Node):
   @property
   def name(self):
     name = self.assignment.answers_dict["name"].upper().strip()
-    if name == "NONAME" or name == "LAURA FIGOSKI":
+    re_missing = re.compile(".*no.*(date|name).*", re.IGNORECASE)
+    re_laura = re.compile("laura.*figoski", re.IGNORECASE)
+    if re_missing.match(name) or re_laura.match(name):
       return None
     else:
       return re.sub("[^A-Z]", "_", name)
@@ -235,7 +237,8 @@ class TranscribePageAttempt(tree.Node):
   @property
   def date(self):
     date = self.assignment.answers_dict["date"].upper().strip()
-    return None if date == "NODATE" else re.sub("[^\w]","_",date).strip()
+    re_missing = re.compile(".*no.*(date|name).*", re.IGNORECASE)
+    return None if re_missing.match(date) else re.sub("[^\w]","_",date).strip()
 
   @property
   def validation_code(self):

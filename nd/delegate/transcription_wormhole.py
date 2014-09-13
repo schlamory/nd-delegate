@@ -6,7 +6,7 @@ from transcribe import TranscriptionTask, TranscribePageAttempt
 def review_existing_tasks():
   pending_tasks = [TranscriptionTask.load(yml) for yml in glob.glob(pending_dir + "/*.yml")]
   for task in pending_tasks:
-    logger.info("Reviewing task {0} ...".format(task.name))
+    logger.info("Reviewing task {0} ".format(task.name))
     task.review()
     if task.status == "FINISHED":
       for chart in task.get_charts():
@@ -26,7 +26,7 @@ def submit_new_tasks():
     ff = pending_dir + "/" + f.split("/")[-1]
     os.rename(f, ff)
     task = TranscriptionTask.create(ff)
-    logger.info("Submitting task {0} ...".format(task.name))
+    logger.info("Submitting task {0} ".format(task.name))
     task.submit(layout_id=config["layout_id"])
     task.save(pending_dir + "/" + task.name + ".yml")
 
@@ -75,9 +75,12 @@ if __name__ == "__main__":
   finished_dir = wormhole_dir + "/archive"
   results_dir = wormhole_dir + "/results"
 
-  review_existing_tasks()
-  submit_new_tasks()
-  handle_redos()
+  try:
+    review_existing_tasks()
+    submit_new_tasks()
+    handle_redos()
+  except Exception as inst:
+    logger.error(inst)
 
   logger.info("End: " + datetime.datetime.today().__str__())
 
