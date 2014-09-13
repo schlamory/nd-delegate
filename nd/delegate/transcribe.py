@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
-import yaml, pyaml, os, random, string, re
+import yaml, pyaml, os, random, string, re, logging
 from collections import OrderedDict
 
 import pdf, tree, mturk
 from mturk import HIT
+
+logger = logging.getLogger("transcribe")
 
 from boto.s3.connection import S3Connection
 
@@ -44,9 +46,9 @@ class TranscriptionTask(tree.Node):
     task.children = subtasks
     return task
 
-  def submit(self):
+  def submit(self, layout_id):
     for child in self.children:
-      child.submit()
+      child.submit(layout_id=layout_id)
 
   def review(self):
     for child in self.children:
@@ -122,16 +124,16 @@ class TranscribePageTask(tree.Node):
     page = self.pdf_page.get_annotated_copy(self.validation_code)
     page.save_to_s3(key)
 
-  def submit(self):
+  def submit(self, layout_id):
     self.post_page()
     attempt = TranscribePageAttempt(parent = self)
     self.children = [attempt]
-    attempt.submit()
+    attempt.submit(layout_id = layout_id)
 
-  def resubmit(self):
+  def resubmit(self, layout_id):
     attempt = TranscribePageAttempt(parent = self)
     self.children.append(attempt)
-    attempt.submit()
+    attempt.submit(layout_id = layout_id)
 
   def review(self):
     for child in self.children:
@@ -174,10 +176,10 @@ class TranscribePageAttempt(tree.Node):
     if self.hit is not None:
       return self.hit.id
 
-  def create_mturk_request(self):
+  def create_mturk_request(self, layout_id):
     request = mturk.Request(
+          layout_id = layout_id,
           title = "Transcribe hand-written note (<250 words)",
-          layout_id = "32MA0R2ZOAKLP26O5I8BSSLFWVZDVX",
           description = "Transcribe hand-written medical chart note (<250 words)",
           keywords = "write, transcribe, english, medical, handwriting",
           reward = 0.35,
@@ -188,8 +190,8 @@ class TranscribePageAttempt(tree.Node):
     request.layout_params["file_url"] = self.parent.page_url
     return request
 
-  def submit(self):
-    request = self.create_mturk_request()
+  def submit(self, layout_id):
+    request = self.create_mturk_request(layout_id)
     self.hit = request.submit()
 
   @property
@@ -199,10 +201,11 @@ class TranscribePageAttempt(tree.Node):
 
   def review(self):
     self.hit.refresh()
-    if self.assignment and self.assignment.status != "Approved":
-      if self.assignment.answers_dict["validation_code"] == self.parent.validation_code:
-        self.assignment.approve()
-        self.hit.refresh()
+    if self.assignment and self.assignment.status == "Submitted":
+      if self.assignment.answers_dict["validation_code"] != self.parent.validation_code:
+        logger.info("Validation code for HIT {0} is incorrect. Approving anyway.".format(self.hit.id))
+      self.assignment.approve()
+      self.hit.refresh()
 
   @property
   def status(self):

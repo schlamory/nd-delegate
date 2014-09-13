@@ -40,9 +40,9 @@ class TestTranscriptionTask(unittest.TestCase):
   def test_submit(self):
     task = TranscriptionTaskFactory()
     with patch.object(transcribe.TranscribePageTask, "submit"):
-      task.submit()
+      task.submit(layout_id="foo")
       for child in task.children:
-        child.submit.assert_called_with()
+        child.submit.assert_called_with(layout_id="foo")
 
   def test_serialize(self):
     task = TranscriptionTaskFactory()
@@ -67,10 +67,23 @@ class TestTranscribePageTask(unittest.TestCase):
     task.children = []
     with patch.object(transcribe.TranscribePageTask, "post_page"):
       with patch.object(transcribe.TranscribePageAttempt, "submit"):
-        task.submit()
+        task.submit(layout_id="foo")
         task.post_page.assert_called()
         assert len(task.children) == 1
-        task.children[0].submit.assert_called_with()
+        task.children[0].submit.assert_called_with(layout_id="foo")
+
+  def test_resubmit(self):
+    task = TranscribePageTaskFactory(children = [])
+    task.children = []
+    with patch.object(transcribe.TranscribePageTask, "post_page"):
+      with patch.object(transcribe.TranscribePageAttempt, "submit"):
+        task.submit(layout_id="foo")
+        assert len(task.children) == 1
+        task.post_page.reset()
+        task.resubmit(layout_id="foo")
+        task.post_page.assert_not_called()
+        task.children[0].submit.assert_not_called()
+        task.children[1].submit.assert_called_with(layout_id="foo")
 
   def test_post_page(self):
     mock_page = MagicMock()
@@ -108,15 +121,15 @@ class TestTranscribePageAttempt(unittest.TestCase):
     mock_request = MagicMock()
     with patch.object(transcribe.TranscribePageAttempt, "create_mturk_request",
                                                          return_value=mock_request):
-      task.submit()
+      task.submit(layout_id="foo")
       task.create_mturk_request.assert_called()
-      mock_request.submit.assert_called()
+      mock_request.submit.assert_called(layout_id="foo")
 
   def test_create_mturk_request(self):
     task = TranscribePageAttemptFactory()
     with patch.object(transcribe.TranscribePageTask, "page_url") as page_url_property:
       page_url_property.__get__ = MagicMock(return_value="PAGE_URL")
-      request = task.create_mturk_request()
+      request = task.create_mturk_request(layout_id="foo")
       assert request.title
       assert request.layout_id
       assert request.description
@@ -134,10 +147,10 @@ class TestTranscribePageAttempt(unittest.TestCase):
     deserialized = TranscribePageAttempt.from_dict(d)
     assert deserialized.hit.id == task.hit.id
 
-  def test_review(self):
-    task = TranscribePageAttemptFactory()
-    task.hit = HITFactory(id = task.hit.id, boto_hit = BotoHITFactory(HITStatus="Reviewable"))
-    task.hit._assignments = [AssignmentFactory()]
-    with patch.object(transcribe.mturk.Assignment, "approve"):
-      task.review()
-      task.hit.assignments[0].approve.assert_called_with()
+  # def test_review(self):
+  #   task = TranscribePageAttemptFactory()
+  #   task.hit = HITFactory(id = task.hit.id, boto_hit = BotoHITFactory(HITStatus="Reviewable"))
+  #   task.hit._assignments = [AssignmentFactory()]
+  #   with patch.object(transcribe.mturk.Assignment, "approve"):
+  #     task.review()
+  #     task.hit.assignments[0].approve.assert_called_with()
