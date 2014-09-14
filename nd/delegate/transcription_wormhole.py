@@ -62,12 +62,8 @@ if __name__ == "__main__":
 
   logger = logging.getLogger("transcription_wormhole")
 
-  logger.info("Begin: " + datetime.datetime.today().__str__())
-
   connection_params = ["bucket_name", "aws_access_key_id", "aws_secret_access_key", "sandbox"]
   connection_config = dict([(k, config[k]) for k in connection_params])
-
-  transcribe.connect(**connection_config)
 
   wormhole_dir = config["wormhole_dir"]
   new_dir = wormhole_dir + "/new"
@@ -75,14 +71,19 @@ if __name__ == "__main__":
   finished_dir = wormhole_dir + "/archive"
   results_dir = wormhole_dir + "/results"
 
-  try:
-    review_existing_tasks()
-    submit_new_tasks()
-    handle_redos()
-  except Exception as inst:
-    logger.error(inst)
+  if len(glob.glob(new_dir + "/*pdf")) or len(glob.glob(pending_dir + "/*.yml")):
+    logger.info("Begin: " + datetime.datetime.today().__str__())
 
-  logger.info("End: " + datetime.datetime.today().__str__())
+    transcribe.connect(**connection_config)
+
+    try:
+      review_existing_tasks()
+      submit_new_tasks()
+      handle_redos()
+    except Exception as inst:
+      logger.error(inst)
+
+    logger.info("End: " + datetime.datetime.today().__str__())
 
 
 

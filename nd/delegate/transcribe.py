@@ -12,6 +12,7 @@ from boto.s3.connection import S3Connection
 # Status definitions
 FINISHED = "FINISHED"
 PENDING = "PENDING"
+HIT_PRICE = 0.35
 bucket = None
 
 def connect(aws_access_key_id = None,
@@ -47,6 +48,11 @@ class TranscriptionTask(tree.Node):
     return task
 
   def submit(self, layout_id):
+    total_cash =  mturk.connection.get_account_balance()[0].amount
+    if len(children)*HIT_PRICE > total_cash:
+      msg = "Insufficient funds (${0}) ".format(total_cash)
+      msg += "for {0}-page transcription task".format(len(children))
+      raise Exception(msg)
     for child in self.children:
       child.submit(layout_id=layout_id)
 
@@ -182,9 +188,9 @@ class TranscribePageAttempt(tree.Node):
           title = "Transcribe hand-written note (<250 words)",
           description = "Transcribe hand-written medical chart note (<250 words)",
           keywords = "write, transcribe, english, medical, handwriting",
-          reward = 0.35,
+          reward = HIT_PRICE,
           lifetime = timedelta(days=7),
-          duration = timedelta(hours=1),
+          duration = timedelta(minutes=20),
           approval_delay = timedelta(days=1)
         )
     request.layout_params["file_url"] = self.parent.page_url

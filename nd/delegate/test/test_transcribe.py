@@ -136,7 +136,7 @@ class TestTranscribePageAttempt(unittest.TestCase):
       assert request.keywords
       assert request.reward == 0.35
       assert request.lifetime == timedelta(days=7)
-      assert request.duration == timedelta(hours=1)
+      assert request.duration == timedelta(minutes=20)
       assert request.approval_delay == timedelta(days=1)
       assert request.layout_params == {"file_url":"PAGE_URL"}
 
