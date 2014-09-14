@@ -49,7 +49,7 @@ class TranscriptionTask(tree.Node):
 
   def submit(self, layout_id):
     total_cash =  mturk.connection.get_account_balance()[0].amount
-    if len(children)*HIT_PRICE > total_cash:
+    if len(self.children)*HIT_PRICE > total_cash:
       msg = "Insufficient funds (${0}) ".format(total_cash)
       msg += "for {0}-page transcription task".format(len(children))
       raise Exception(msg)
