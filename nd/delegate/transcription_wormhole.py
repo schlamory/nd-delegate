@@ -37,7 +37,8 @@ def handle_redos():
 
   if len(redo_lines) >0:
     attempts_by_hit_id = {}
-    for task in [TranscriptionTask.load(yml) for yml in glob.glob(finished_dir + "/*.yml")]:
+    ymls = glob.glob(finished_dir + "/*.yml") + glob.glob(pending_dir + "/*.yml")
+    for task in [TranscriptionTask.load(yml) for yml in ymls]:
       for page_task in task.children:
         for attempt in page_task.children:
           attempts_by_hit_id[attempt.hit.id] = attempt
@@ -47,7 +48,7 @@ def handle_redos():
       page_task = attempt.parent
       task = page_task.parent
       logger.info("Resubmitting page {0} of task {1}".format(page_task.page_number, task.name))
-      page_task.resubmit()
+      page_task.resubmit(layout_id=config["layout_id"])
       task.save(pending_dir + "/" + task.name + ".yml")
 
     with open(redo_file_path) as f:
