@@ -1,5 +1,7 @@
+ipython
 pytest
 boto>=2.31
+pyyaml
 pyaml
 pypdf
 reportlab
